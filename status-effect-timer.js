@@ -14,8 +14,21 @@ const applyConcToCaster = async function (caster, duration) {
 	await caster.createEmbeddedEntity("ActiveEffect", data);
 }
 
+const postMessageToChat = async ({ effectTitle, notes, rounds, currentRound, userId, actor }) => {
 
-const setTimerX = async function (actor, effectTitle, relativeTo, concToCaster, roundsAsString) {
+	const content = `<h2>${effectTitle}</h2>
+	<p>${notes}</p>
+	<p>${rounds} rounds</p>
+	<p>Will be done in round ${currentRound + rounds}</p>`;
+
+	ChatMessage.create({
+		user: userId,
+		speaker: ChatMessage.getSpeaker({ token: actor }),
+		content
+	});
+}
+
+const setTimerX = async function (actor, effectTitle, relativeTo, concToCaster, roundsAsString, notes) {
 	let effect = await actor.effects.find(ef => ef.data.label === effectTitle);
 	if (!effect) {
 		ui.notifications.error("Something went wrong! Effect was not found on the token.");
@@ -33,13 +46,14 @@ const setTimerX = async function (actor, effectTitle, relativeTo, concToCaster, 
 	};
 	console.log(duration);
 	effect.update({ duration: duration });
+	postMessageToChat({ effectTitle, notes, rounds, userId: game.user._id, actor });
 	if (concToCaster) {
 		applyConcToCaster(await game.combat.turns[relativeTo].actor, duration);
 	};
 
 }
 
-const setTimerEndOfTurn = async function (actor, effectTitle, relativeTo, concToCaster) {
+const setTimerEndOfTurn = async function (actor, effectTitle, relativeTo, concToCaster, notes) {
 	let effect = await actor.effects.find(ef => ef.data.label === effectTitle);
 	if (!effect) {
 		ui.notifications.error("Something went wrong! Effect was not found on the token.");
@@ -54,6 +68,8 @@ const setTimerEndOfTurn = async function (actor, effectTitle, relativeTo, concTo
 		startRound: relativeTo <= currentTurn ? currentRound : currentRound - 1
 	};
 	effect.update({ duration: duration });
+	postMessageToChat({ effectTitle, notes, rounds: 1, userId: game.user._id, actor });
+
 	if (concToCaster) {
 		applyConcToCaster(await game.combat.turns[relativeTo].actor, duration);
 	};
@@ -75,9 +91,11 @@ const popDialog = function (event, actor) {
 		var defaultSelected = game.combat.turn;
 		$("#relativeToSelector").val(defaultSelected);
 	});
+
 	let cont = `Relative to: <select name="relativeToSelector" id="relativeToSelector">${fighterOptions}</select>
-	</br><input type="checkbox" name="applyConc" id="applyConc"> apply to ⇑them⇑ a concentration effect for the same duration.
-	<br/><input type="number" name="duration" id="duration" placeholder="Duration in rounds">
+	<br/><input type="checkbox" name="applyConc" id="applyConc"/> apply to ⇑them⇑ a concentration effect for the same duration.
+	<br/><input type="number" name="duration" id="duration" placeholder="Duration in rounds"/>
+	<br/><input type="text" name="notes" id="notes" placeholder="Notes, ie 1d6 bleed damage"/>
 	<br/>`;
 
 	new Dialog({
@@ -87,7 +105,12 @@ const popDialog = function (event, actor) {
 			a: {
 				label: "End of next turn",
 				callback: (html) => {
-					setTimerEndOfTurn(actor, event.currentTarget.title, document.getElementById("relativeToSelector").value, document.getElementById("applyConc").checked);
+					setTimerEndOfTurn(
+						actor,
+						event.currentTarget.title,
+						document.getElementById("relativeToSelector").value,
+						document.getElementById("applyConc").checked,
+						document.getElementById("notes").value);
 				},
 			},
 			b: {
@@ -98,7 +121,8 @@ const popDialog = function (event, actor) {
 						event.currentTarget.title,
 						document.getElementById("relativeToSelector").value,
 						document.getElementById("applyConc").checked,
-						document.getElementById("duration").value);
+						document.getElementById("duration").value,
+						document.getElementById("notes").value)
 				},
 			}
 		},
@@ -120,8 +144,8 @@ Hooks.on("ready", function () {
 const removeFinishedEffects = async function () {
 	game.combat.turns.forEach(
 		fighter => {
-			fighter.actor.effects
-				.filter(e => e.duration.remaining != null && e.duration.remaining <= 0)
+			[...fighter.actor.effects
+				.filter(e => e.duration.remaining != null && e.duration.remaining <= 0)]
 				.forEach(async (e) => { e.delete() })
 		}
 	);
