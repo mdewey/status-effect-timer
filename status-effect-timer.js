@@ -15,18 +15,14 @@ const applyConcToCaster = async function (caster, duration) {
 }
 
 
-const setTimerX = async function (actor, effectTitle, relativeTo, concToCaster, rounds) {
+const setTimerX = async function (actor, effectTitle, relativeTo, concToCaster, roundsAsString) {
 	let effect = await actor.effects.find(ef => ef.data.label === effectTitle);
 	if (!effect) {
 		ui.notifications.error("Something went wrong! Effect was not found on the token.");
 		return;
 	}
+	const rounds = parseInt(roundsAsString);
 
-	// rounds not a number
-	if (isNaN(rounds)) {
-		// basically forever
-		rounds = 100000;
-	}
 	let currentRound = game.combat.current.round;
 	let currentTurn = game.combat.current.turn;
 	let duration = {
@@ -35,6 +31,7 @@ const setTimerX = async function (actor, effectTitle, relativeTo, concToCaster, 
 		startTurn: relativeTo,
 		startRound: relativeTo <= currentTurn ? currentRound : currentRound - 1
 	};
+	console.log(duration);
 	effect.update({ duration: duration });
 	if (concToCaster) {
 		applyConcToCaster(await game.combat.turns[relativeTo].actor, duration);
@@ -80,7 +77,8 @@ const popDialog = function (event, actor) {
 	});
 	let cont = `Relative to: <select name="relativeToSelector" id="relativeToSelector">${fighterOptions}</select>
 	</br><input type="checkbox" name="applyConc" id="applyConc"> apply to ⇑them⇑ a concentration effect for the same duration.
-	<br/><input type="number" name="duration" id="duration" placeholder="Duration in rounds">`;
+	<br/><input type="number" name="duration" id="duration" placeholder="Duration in rounds">
+	<br/>`;
 
 	new Dialog({
 		title: "Select duration",
@@ -121,9 +119,11 @@ Hooks.on("ready", function () {
 
 const removeFinishedEffects = async function () {
 	game.combat.turns.forEach(
-		fighter => fighter.actor.effects
-			.filter(e => e.duration.remaining != null && e.duration.remaining <= 0)
-			.forEach(async (e) => { e.delete() })
+		fighter => {
+			fighter.actor.effects
+				.filter(e => e.duration.remaining != null && e.duration.remaining <= 0)
+				.forEach(async (e) => { e.delete() })
+		}
 	);
 }
 
