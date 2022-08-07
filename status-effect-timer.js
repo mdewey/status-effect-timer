@@ -46,7 +46,7 @@ const setTimerX = async function (actor, effectTitle, relativeTo, concToCaster, 
 	};
 	console.log(duration);
 	effect.update({ duration: duration });
-	postMessageToChat({ effectTitle, notes, rounds, userId: game.user._id, actor });
+	postMessageToChat({ effectTitle, notes, rounds, currentRound, userId: game.user._id, actor });
 	if (concToCaster) {
 		applyConcToCaster(await game.combat.turns[relativeTo].actor, duration);
 	};
@@ -68,7 +68,7 @@ const setTimerEndOfTurn = async function (actor, effectTitle, relativeTo, concTo
 		startRound: relativeTo <= currentTurn ? currentRound : currentRound - 1
 	};
 	effect.update({ duration: duration });
-	postMessageToChat({ effectTitle, notes, rounds: 1, userId: game.user._id, actor });
+	postMessageToChat({ effectTitle, notes, rounds: 1, currentRound, userId: game.user._id, actor });
 
 	if (concToCaster) {
 		applyConcToCaster(await game.combat.turns[relativeTo].actor, duration);
